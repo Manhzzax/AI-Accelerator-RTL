@@ -1,0 +1,31 @@
+# Simulation artifacts (Icarus Verilog, GTKWave, ModelSim, VCS)
+*.vvp
+*.vcd
+*.vpd
+*.fsdb
+*.wlf
+*.log
+transcript
+work/
+build/
+sim/build/
+sim/*.vvp
+sim/*.vcd
+sim/*.log
+
+# Python / Machine Learning Model artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# OS / Editor temporary files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
