@@ -62,7 +62,7 @@ model/
 │   ├── 01_stem_out.txt
 │   ├── ...
 │   └── 15_logits_output.txt
-└── weights/                # Folded, quantized INT16 parameter files (exported from checkpoint)
+└── weights/                # Folded, quantized DFP16 parameter files (exported from checkpoint)
     ├── 01_stem_0_weights.txt
     ├── 01_stem_0_bias.txt
     ├── ...
