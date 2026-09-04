@@ -22,6 +22,16 @@ __pycache__/
 venv/
 env/
 
+# Binary Model Checkpoints (keep out of git; weights/ and test_vectors/ are tracked as text hex)
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.onnx
+model/checkpoints/
+model/*.pt
+model/*.pth
+
 # OS / Editor temporary files
 .DS_Store
 Thumbs.db
