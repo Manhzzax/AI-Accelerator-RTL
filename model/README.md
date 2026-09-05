@@ -53,15 +53,17 @@ The hardware execution units process $W_{\text{fused}}$ and $B_{\text{fused}}$ d
 ```text
 model/
 ├── README.md               # Model architecture & data format description (this file)
-├── export_weights.py       # Extraction framework to fold BN & quantize checkpoint to 16-bit hex
+├── export_weights.py       # Extraction framework to fold BN & quantize checkpoint to 8-bit hex
 ├── generate_instructions.py# Microcode compiler assembling 64-bit microcode for CNN_1D_Core
-├── instructions.hex        # Generated 64-bit micro-instructions for all 15 layers
+├── instructions.hex        # Generated 64-bit micro-instructions for the 13 hardware layers
 ├── manifest.json           # Layer metadata, tensor shapes, and fractional bit shifts
 ├── test_vectors/           # Bit-exact layer-by-layer verification vectors (from model team)
 │   ├── 00_input_eeg.txt
 │   ├── 01_stem_out.txt
 │   ├── ...
-│   └── 15_logits_output.txt
+│   ├── 13_context_1_pw_out.txt # Final hardware accelerator output (64 x 32)
+│   ├── 14_gap_out.txt          # Software post-processing (ARM Cortex-A53)
+│   └── 15_logits_output.txt    # Software post-processing (ARM Cortex-A53)
 └── weights/                # Folded, quantized DFP8 parameter files (exported from checkpoint)
     ├── 01_stem_0_weights.txt
     ├── 01_stem_0_bias.txt
@@ -88,26 +90,26 @@ F6    // -10
 ```
 
 ### 5.2 Layer-by-Layer Verification Points
-The full execution graph of `WearSeizure-1D` comprises 15 layer transformations. The reference golden flow traces each point to enable isolated hardware verification:
+The execution graph partitions cleanly into **13 hardware-accelerated feature extraction layers** executed on FPGA RTL, followed by **2 software post-processing layers** executed on the host ARM CPU:
 
-| ID | Layer Reference | Output Shape ($C \times L$) | Total Elements | 8-bit Size |
-| :---:| :--- | :---:| :---:| :---:|
-| `00` | Input EEG Window | $1 \times 1024$ | 1,024 | 1,024 B |
-| `01` | `stem.0` (Conv1D) | $8 \times 512$ | 4,096 | 4,096 B |
-| `02` | `b1.dw` (Depthwise) | $8 \times 256$ | 2,048 | 2,048 B |
-| `03` | `b1.pw` (Pointwise) | $16 \times 256$ | 4,096 | 4,096 B |
-| `04` | `b2.dw` (Depthwise) | $16 \times 128$ | 2,048 | 2,048 B |
-| `05` | `b2.pw` (Pointwise) | $24 \times 128$ | 3,072 | 3,072 B |
-| `06` | `b3.dw` (Depthwise) | $24 \times 64$ | 1,536 | 1,536 B |
-| `07` | `b3.pw` (Pointwise) | $32 \times 64$ | 2,048 | 2,048 B |
-| `08` | `b4.dw` (Depthwise) | $32 \times 32$ | 1,024 | 1,024 B |
-| `09` | `b4.pw` (Pointwise) | $48 \times 32$ | 1,536 | 1,536 B |
-| `10` | `context.0.dw` | $48 \times 32$ | 1,536 | 1,536 B |
-| `11` | `context.0.pw` | $64 \times 32$ | 2,048 | 2,048 B |
-| `12` | `context.1.dw` | $64 \times 32$ | 2,048 | 2,048 B |
-| `13` | `context.1.pw` | $64 \times 32$ | 2,048 | 2,048 B |
-| `14` | `gap` (Average Pooling) | $64 \times 1$ | 64 | 64 B |
-| `15` | `fc` (Classification Logits) | $2 \times 1$ | 2 | 2 B |
+| ID | Layer Reference | Target | Output Shape ($C \times L$) | Total Elements | 8-bit Size |
+| :---:| :--- | :---: | :---:| :---:| :---:|
+| `00` | Input EEG Window | Input Stream | $1 \times 1024$ | 1,024 | 1,024 B |
+| `01` | `stem.0` (Conv1D) | **FPGA RTL** | $8 \times 512$ | 4,096 | 4,096 B |
+| `02` | `b1.dw` (Depthwise) | **FPGA RTL** | $8 \times 256$ | 2,048 | 2,048 B |
+| `03` | `b1.pw` (Pointwise) | **FPGA RTL** | $16 \times 256$ | 4,096 | 4,096 B |
+| `04` | `b2.dw` (Depthwise) | **FPGA RTL** | $16 \times 128$ | 2,048 | 2,048 B |
+| `05` | `b2.pw` (Pointwise) | **FPGA RTL** | $24 \times 128$ | 3,072 | 3,072 B |
+| `06` | `b3.dw` (Depthwise) | **FPGA RTL** | $24 \times 64$ | 1,536 | 1,536 B |
+| `07` | `b3.pw` (Pointwise) | **FPGA RTL** | $32 \times 64$ | 2,048 | 2,048 B |
+| `08` | `b4.dw` (Depthwise) | **FPGA RTL** | $32 \times 32$ | 1,024 | 1,024 B |
+| `09` | `b4.pw` (Pointwise) | **FPGA RTL** | $48 \times 32$ | 1,536 | 1,536 B |
+| `10` | `context.0.dw` | **FPGA RTL** | $48 \times 32$ | 1,536 | 1,536 B |
+| `11` | `context.0.pw` | **FPGA RTL** | $64 \times 32$ | 2,048 | 2,048 B |
+| `12` | `context.1.dw` | **FPGA RTL** | $64 \times 32$ | 2,048 | 2,048 B |
+| `13` | `context.1.pw` | **FPGA RTL** | $64 \times 32$ | 2,048 | 2,048 B |
+| `14` | `gap` (Average Pooling) | *ARM Software* | $64 \times 1$ | 64 | 64 B |
+| `15` | `fc` (Classification Logits) | *ARM Software* | $2 \times 1$ | 2 | 2 B |
 
 ### 5.3 Layer Metadata Schema (`manifest.json`)
 To coordinate the fractional shift values ($p$) and memory offsets between software generation and RTL testbenches, the model directory utilizes a JSON metadata manifest:

@@ -10,10 +10,10 @@ To complete full-system verification on the hardware accelerator, the modeling t
 
 | Item | Deliverable | Target Location | Description |
 | :---:| :--- | :--- | :--- |
-| **1** | **Quantized Weights & Biases** | `model/weights/*.txt` | Plain ASCII hex text files of DFP8 parameters with BatchNorm mathematically folded into Conv/FC (total ~11.5 KiB). *Note: Binary `.pt` checkpoints remain in `WearSeizure-1D` and are excluded from Git.* |
+| **1** | **Quantized Weights & Biases** | `model/weights/*.txt` | Plain ASCII hex text files of DFP8 parameters with BatchNorm mathematically folded into Conv (total ~11.5 KiB). *Note: Binary `.pt` checkpoints remain in `WearSeizure-1D` and are excluded from Git.* |
 | **2** | **Golden Model Simulator** | `model/golden_model.py` | Standalone Python/NumPy script implementing bit-exact fixed-point hardware datapath (no PyTorch dependencies required). |
-| **3** | **Verification Test Vectors** | `model/test_vectors/*.txt` | Plain ASCII hex text files for the raw EEG input and all 15 intermediate layer outputs. |
-| **4** | **Per-Layer Scaling Metadata** | `model/manifest.json` | Fractional bit shifts ($p_{\text{in}}, p_w, p_{\text{out}}$) and `OUTPUT_SHIFT` for each layer. |
+| **3** | **Verification Test Vectors** | `model/test_vectors/*.txt` | Plain ASCII hex text files for the raw EEG input, 13 hardware layer outputs, and software classification outputs. |
+| **4** | **Per-Layer Scaling Metadata** | `model/manifest.json` | Fractional bit shifts ($p_{\text{in}}, p_w, p_{\text{out}}$) and `OUTPUT_SHIFT` for the 13 hardware layers. |
 
 ---
 
@@ -35,28 +35,29 @@ To complete full-system verification on the hardware accelerator, the modeling t
   * **Debug & Waveform Alignment:** Allows dumping intermediate values at any cycle or generating custom corner-case vectors (e.g. all-zeros, maximum saturation, impulse spikes) to debug waveform mismatches in GTKWave.
 
 ### 2.3 Layer-by-Layer Test Vectors (`model/test_vectors/`)
-All test vectors should be formatted as 2-character uppercase hexadecimal strings (one 8-bit signed byte per line):
+All test vectors should be formatted as 2-character uppercase hexadecimal strings (one 8-bit signed byte per line). The hardware accelerator executes layers 1 through 13, and the ARM host CPU performs GAP and FC in software:
 
-| Filename | Producing Layer | Tensor Shape ($C \times L$) | Word Count |
-| :--- | :--- | :---:| :---:|
-| `00_input_eeg.txt` | Pre-filtered EEG input window | $1 \times 1024$ | 1,024 |
-| `01_stem_out.txt` | `stem.0` (Conv1D) | $8 \times 512$ | 4,096 |
-| `02_b1_dw_out.txt` | `b1.dw` (Depthwise) | $8 \times 256$ | 2,048 |
-| `03_b1_pw_out.txt` | `b1.pw` (Pointwise) | $16 \times 256$ | 4,096 |
-| `04_b2_dw_out.txt` | `b2.dw` (Depthwise, $dil=1$) | $16 \times 128$ | 2,048 |
-| `05_b2_pw_out.txt` | `b2.pw` (Pointwise) | $24 \times 128$ | 3,072 |
-| `06_b3_dw_out.txt` | `b3.dw` (Depthwise, $dil=2$) | $24 \times 64$ | 1,536 |
-| `07_b3_pw_out.txt` | `b3.pw` (Pointwise) | $32 \times 64$ | 2,048 |
-| `08_b4_dw_out.txt` | `b4.dw` (Depthwise, $dil=4$) | $32 \times 32$ | 1,024 |
-| `09_b4_pw_out.txt` | `b4.pw` (Pointwise) | $48 \times 32$ | 1,536 |
-| `10_context_0_dw_out.txt` | `context.0.dw` (Depthwise, $dil=8$) | $48 \times 32$ | 1,536 |
-| `11_context_0_pw_out.txt` | `context.0.pw` (Pointwise) | $64 \times 32$ | 2,048 |
-| `12_context_1_dw_out.txt` | `context.1.dw` (Depthwise, $dil=16$) | $64 \times 32$ | 2,048 |
-| `13_context_1_pw_out.txt` | `context.1.pw` (Pointwise) | $64 \times 32$ | 2,048 |
-| `14_gap_out.txt` | `gap` (Global Average Pooling) | $64 \times 1$ | 64 |
-| `15_logits_output.txt` | `fc` (Classification Logits) | $2 \times 1$ | 2 |
+| Filename | Producing Layer | Execution Target | Tensor Shape ($C \times L$) | Word Count |
+| :--- | :--- | :---: | :---:| :---:|
+| `00_input_eeg.txt` | Pre-filtered EEG input window | Input Stream | $1 \times 1024$ | 1,024 |
+| `01_stem_out.txt` | `stem.0` (Conv1D) | **FPGA RTL** | $8 \times 512$ | 4,096 |
+| `02_b1_dw_out.txt` | `b1.dw` (Depthwise) | **FPGA RTL** | $8 \times 256$ | 2,048 |
+| `03_b1_pw_out.txt` | `b1.pw` (Pointwise) | **FPGA RTL** | $16 \times 256$ | 4,096 |
+| `04_b2_dw_out.txt` | `b2.dw` (Depthwise, $dil=1$) | **FPGA RTL** | $16 \times 128$ | 2,048 |
+| `05_b2_pw_out.txt` | `b2.pw` (Pointwise) | **FPGA RTL** | $24 \times 128$ | 3,072 |
+| `06_b3_dw_out.txt` | `b3.dw` (Depthwise, $dil=2$) | **FPGA RTL** | $24 \times 64$ | 1,536 |
+| `07_b3_pw_out.txt` | `b3.pw` (Pointwise) | **FPGA RTL** | $32 \times 64$ | 2,048 |
+| `08_b4_dw_out.txt` | `b4.dw` (Depthwise, $dil=4$) | **FPGA RTL** | $32 \times 32$ | 1,024 |
+| `09_b4_pw_out.txt` | `b4.pw` (Pointwise) | **FPGA RTL** | $48 \times 32$ | 1,536 |
+| `10_context_0_dw_out.txt` | `context.0.dw` (Depthwise, $dil=8$) | **FPGA RTL** | $48 \times 32$ | 1,536 |
+| `11_context_0_pw_out.txt` | `context.0.pw` (Pointwise) | **FPGA RTL** | $64 \times 32$ | 2,048 |
+| `12_context_1_dw_out.txt` | `context.1.dw` (Depthwise, $dil=16$) | **FPGA RTL** | $64 \times 32$ | 2,048 |
+| `13_context_1_pw_out.txt` | `context.1.pw` (Pointwise) | **FPGA RTL (Final HW Out)** | $64 \times 32$ | 2,048 |
+| `14_gap_out.txt` | `gap` (Global Average Pooling) | *ARM Software* | $64 \times 1$ | 64 |
+| `15_logits_output.txt` | `fc` (Classification Logits) | *ARM Software* | $2 \times 1$ | 2 |
 
 ### 2.4 Quantization Metadata & Scaling (`manifest.json`)
+* The 64-bit microcode in `model/instructions.hex` contains **exactly 13 instructions** corresponding to layers 1 through 13.
 * If the calibration / PTQ phase results in custom per-layer fractional bit shifts, please update `manifest.json`:
   $$\text{output\_shift} = p_{\text{in}} + p_w - p_{\text{out}}$$
 * Running `python model/generate_instructions.py` will then recompile the 64-bit microcode in `model/instructions.hex` automatically.

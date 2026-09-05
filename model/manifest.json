@@ -256,7 +256,9 @@
       "output_shift": 7,
       "src_fm_sel": 0,
       "dst_fm_sel": 1
-    },
+    }
+  ],
+  "software_layers": [
     {
       "layer_id": 14,
       "name": "gap",
@@ -295,5 +297,6 @@
       "src_fm_sel": 0,
       "dst_fm_sel": 1
     }
-  ]
+  ],
+  "hardware_instruction_count": 13
 }

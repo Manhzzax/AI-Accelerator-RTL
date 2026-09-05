@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """generate_instructions.py
 
-Reads manifest.json and compiles the 15 layers of WearSeizure-1D into 64-bit
-micro-instructions (instructions.hex) for CNN_1D_Core.
+Reads manifest.json and compiles the 13 hardware layers of WearSeizure-1D into 64-bit
+micro-instructions (instructions.hex) for CNN_1D_Core. (Layers 14 GAP and 15 FC
+are executed in software on the host ARM CPU).
 """
 
 import json

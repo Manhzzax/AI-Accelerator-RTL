@@ -107,6 +107,7 @@ def main():
 
     # Map state_dict keys for wearseizure1d_k5only
     LAYER_MAPPING = [
+        # 13 Hardware layers for CNN_1D_Core (GAP & FC are offloaded to software)
         # (layer_id, name, conv_w_key, conv_b_key, bn_prefix)
         (1, "stem.0", "stem.0.weight", None, "stem.1"),
         (2, "b1.dw", "b1.depthwise.weight", None, None),
@@ -121,15 +122,11 @@ def main():
         (11, "context.0.pw", "context.0.pointwise.weight", None, "context.0.bn"),
         (12, "context.1.dw", "context.1.depthwise.weight", None, None),
         (13, "context.1.pw", "context.1.pointwise.weight", None, "context.1.bn"),
-        (14, "gap", None, None, None),
-        (15, "fc", "classifier.weight", "classifier.bias", None),
     ]
 
-    print("Extracting, folding, and quantizing layers:")
+    print("Extracting, folding, and quantizing 13 hardware layers:")
 
     for layer_id, name, conv_w_key, conv_b_key, bn_prefix in LAYER_MAPPING:
-        if name == "gap":
-            continue
 
         meta = next(l for l in manifest["layers"] if l["layer_id"] == layer_id)
         p_w = meta.get("p_weight", 7)
