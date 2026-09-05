@@ -1,6 +1,7 @@
 {
   "model_name": "WearSeizure-1D (k5_only)",
   "precision": "INT8/DFP8",
+  "_quantization_status": "STUB_TEMPLATE: All p_in=6, p_weight=7, p_out=6, output_shift=7 values are placeholders for RTL pipeline bring-up. Final per-layer calibration parameters and folded weights must be provided by the modeling team.",
   "sampling_rate_hz": 256,
   "window_samples": 1024,
   "num_classes": 2,

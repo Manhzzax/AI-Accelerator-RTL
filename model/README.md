@@ -28,6 +28,10 @@ To maximize energy efficiency, minimize SRAM footprint, and maintain clinical de
   $$\text{Output Shift Amount} = p_{\text{weight}} + p_{\text{in}} - p_{\text{out}}$$
   This maps directly onto the hardware core's 64-bit micro-instruction barrel shifter (`OUTPUT_SHIFT`).
 
+> [!NOTE]
+> **Quantization Status: STUB / TEMPLATE**
+> The current uniform parameters ($p_{\text{in}}=6, p_w=7, p_{\text{out}}=6 \rightarrow \text{shift}=7$) are **STUB / TEMPLATE placeholders** used to verify the RTL instruction decoder and datapath pipeline. The AI modeling team will deliver the calibrated per-layer quantization parameter table and folded weights upon completion of PTQ calibration.
+
 ### On-Chip Memory Sizing
 At INT8 / DFP8 precision:
 * **Weight Memory:** $11,786 \times 1\text{ Byte} \approx \mathbf{11.5\text{ KiB}}$.

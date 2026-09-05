@@ -10,10 +10,10 @@ To complete full-system verification on the hardware accelerator, the modeling t
 
 | Item | Deliverable | Target Location | Description |
 | :---:| :--- | :--- | :--- |
-| **1** | **Quantized Weights & Biases** | `model/weights/*.txt` | Plain ASCII hex text files of DFP8 parameters with BatchNorm mathematically folded into Conv (total ~11.5 KiB). *Note: Binary `.pt` checkpoints remain in `WearSeizure-1D` and are excluded from Git.* |
+| **1** | **Quantized Weights & Biases** | `model/weights/*.txt` | **REQUIRED FROM MODELING TEAM:** Plain ASCII hex text files of DFP8 parameters with BatchNorm mathematically folded into Conv (total ~11.5 KiB). *Note: Binary `.pt` checkpoints remain in `WearSeizure-1D` and are excluded from Git.* |
 | **2** | **Golden Model Simulator** | `model/golden_model.py` | Standalone Python/NumPy script implementing bit-exact fixed-point hardware datapath (no PyTorch dependencies required). |
 | **3** | **Verification Test Vectors** | `model/test_vectors/*.txt` | Plain ASCII hex text files for the raw EEG input, 13 hardware layer outputs, and software classification outputs. |
-| **4** | **Per-Layer Scaling Metadata** | `model/manifest.json` | Fractional bit shifts ($p_{\text{in}}, p_w, p_{\text{out}}$) and `OUTPUT_SHIFT` for the 13 hardware layers. |
+| **4** | **Per-Layer Quantization Parameter Table** | `model/manifest.json` | **REQUIRED FROM MODELING TEAM:** Exact per-layer fractional bit shifts ($p_{\text{in}}, p_w, p_{\text{out}}$) and `output_shift` derived from calibration data. *(Currently committed values are STUB / TEMPLATE placeholders for RTL testing).* |
 
 ---
 
@@ -57,10 +57,20 @@ All test vectors should be formatted as 2-character uppercase hexadecimal string
 | `15_logits_output.txt` | `fc` (Classification Logits) | *ARM Software* | $2 \times 1$ | 2 |
 
 ### 2.4 Quantization Metadata & Scaling (`manifest.json`)
-* The 64-bit microcode in `model/instructions.hex` contains **exactly 13 instructions** corresponding to layers 1 through 13.
-* If the calibration / PTQ phase results in custom per-layer fractional bit shifts, please update `manifest.json`:
-  $$\text{output\_shift} = p_{\text{in}} + p_w - p_{\text{out}}$$
-* Running `python model/generate_instructions.py` will then recompile the 64-bit microcode in `model/instructions.hex` automatically.
+
+> [!IMPORTANT]
+> **Quantization Status: STUB / TEMPLATE**
+> The values currently populated in `model/manifest.json` ($p_{\text{in}}=6, p_w=7, p_{\text{out}}=6, \text{output\_shift}=7$) and the corresponding 13 micro-instructions in `model/instructions.hex` are **STUB / TEMPLATE placeholders**.
+> 
+> They were established to freeze the 64-bit microcode bitfield encoding and verify RTL instruction decode & datapath pipeline timing before trained weights are delivered.
+> 
+> The **AI Modeling Team must deliver the final Quantization Parameter Table** derived from post-training quantization (PTQ) or quantization-aware training (QAT) on the clinical EEG calibration set:
+> $$\text{output\_shift}^{(l)} = p_{\text{in}}^{(l)} + p_w^{(l)} - p_{\text{out}}^{(l)}$$
+> Once the calibrated parameters are filled into `manifest.json`, running:
+> ```bash
+> python model/generate_instructions.py
+> ```
+> will automatically recompile the production microcode into `model/instructions.hex` without requiring any RTL modifications.
 
 ---
 

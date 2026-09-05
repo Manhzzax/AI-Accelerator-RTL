@@ -1,3 +1,5 @@
+// STUB / TEMPLATE: 13 64-bit micro-instructions generated with placeholder output_shift=7.
+// Recompile via 'python model/generate_instructions.py' once final PTQ calibration parameters are delivered.
 0001021D31C00001
 0408021521C00002
 0008040401C00001

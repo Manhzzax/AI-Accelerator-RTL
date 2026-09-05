@@ -4,6 +4,11 @@
 Reads manifest.json and compiles the 13 hardware layers of WearSeizure-1D into 64-bit
 micro-instructions (instructions.hex) for CNN_1D_Core. (Layers 14 GAP and 15 FC
 are executed in software on the host ARM CPU).
+
+NOTE (STUB / TEMPLATE):
+    The current compiled output_shift values default to 7 (template).
+    Once the AI modeling team provides the final PTQ calibration table,
+    update manifest.json and re-run this script to generate the production microcode.
 """
 
 import json
@@ -86,6 +91,10 @@ def main():
               f"in={layer['in_channels']} out={layer['out_channels']} shift={layer['output_shift']}")
 
     with open(OUTPUT_HEX_PATH, "w", encoding="utf-8") as f:
+        is_stub = "STUB" in manifest.get("_quantization_status", "")
+        if is_stub:
+            f.write("// STUB / TEMPLATE: 13 64-bit micro-instructions generated with placeholder output_shift=7.\n")
+            f.write("// Recompile via 'python model/generate_instructions.py' once final PTQ calibration parameters are delivered.\n")
         for hex_str in instructions:
             f.write(f"{hex_str}\n")
 
