@@ -10,7 +10,7 @@ To complete full-system verification on the hardware accelerator, the modeling t
 
 | Item | Deliverable | Target Location | Description |
 | :---:| :--- | :--- | :--- |
-| **1** | **Quantized Weights & Biases** | `model/weights/*.txt` | Plain ASCII hex text files of DFP16 parameters with BatchNorm mathematically folded into Conv/FC (total ~23 KiB). *Note: Binary `.pt` checkpoints remain in `WearSeizure-1D` and are excluded from Git.* |
+| **1** | **Quantized Weights & Biases** | `model/weights/*.txt` | Plain ASCII hex text files of DFP8 parameters with BatchNorm mathematically folded into Conv/FC (total ~11.5 KiB). *Note: Binary `.pt` checkpoints remain in `WearSeizure-1D` and are excluded from Git.* |
 | **2** | **Golden Model Simulator** | `model/golden_model.py` | Standalone Python/NumPy script implementing bit-exact fixed-point hardware datapath (no PyTorch dependencies required). |
 | **3** | **Verification Test Vectors** | `model/test_vectors/*.txt` | Plain ASCII hex text files for the raw EEG input and all 15 intermediate layer outputs. |
 | **4** | **Per-Layer Scaling Metadata** | `model/manifest.json` | Fractional bit shifts ($p_{\text{in}}, p_w, p_{\text{out}}$) and `OUTPUT_SHIFT` for each layer. |
@@ -25,17 +25,17 @@ To complete full-system verification on the hardware accelerator, the modeling t
   ```bash
   python model/export_weights.py --checkpoint /path/to/wearseizure1d_k5only_best.pt
   ```
-* **Hardware Ready:** `export_weights.py` automatically folds BatchNorm into preceding Conv weights/biases, scales them to signed 16-bit DFP16 ($p_w = 14$), and outputs 4-character uppercase hexadecimal strings into `model/weights/`. These files are directly consumed by Verilog `$readmemh` in hardware simulation and FPGA BRAM initialization.
+* **Hardware Ready:** `export_weights.py` automatically folds BatchNorm into preceding Conv weights/biases, scales them to signed 8-bit DFP8 ($p_w = 7$), and outputs 2-character uppercase hexadecimal strings into `model/weights/`. These files are directly consumed by Verilog `$readmemh` in hardware simulation and FPGA BRAM initialization.
 
 ### 2.2 Golden Model Simulator (`golden_model.py`)
 * **Purpose:** Serves as the golden numerical reference for the RTL testbench and debugging pipeline failures without requiring a full machine learning runtime.
 * **Requirements:**
   * **Zero Heavy Dependencies:** Implemented using pure Python or NumPy only (no PyTorch, CUDA, or heavy ML libraries).
-  * **Bit-Accurate Arithmetic:** Exactly mimics the hardware PE datapath: signed 16-bit multiplication, 48-bit accumulator, arithmetic right shift (`>>> shift`), and 16-bit symmetric saturation clamp (`[-32768, 32767]`).
+  * **Bit-Accurate Arithmetic:** Exactly mimics the hardware PE datapath: signed 8-bit multiplication, 32-bit accumulator, arithmetic right shift (`>>> shift`), and 8-bit symmetric saturation clamp (`[-128, 127]`).
   * **Debug & Waveform Alignment:** Allows dumping intermediate values at any cycle or generating custom corner-case vectors (e.g. all-zeros, maximum saturation, impulse spikes) to debug waveform mismatches in GTKWave.
 
 ### 2.3 Layer-by-Layer Test Vectors (`model/test_vectors/`)
-All test vectors should be formatted as 4-character uppercase hexadecimal strings (one 16-bit signed word per line):
+All test vectors should be formatted as 2-character uppercase hexadecimal strings (one 8-bit signed byte per line):
 
 | Filename | Producing Layer | Tensor Shape ($C \times L$) | Word Count |
 | :--- | :--- | :---:| :---:|

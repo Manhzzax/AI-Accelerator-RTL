@@ -13,16 +13,16 @@ This repository hosts the hardware architecture, register-transfer level (RTL) d
 * **Input Signal:** Single-channel raw EEG, sampled at **256 Hz**.
 * **Inference Window:** **4.0 seconds (1024 samples)**, streaming with a 1.0-second step size (1 classification decision per second).
 * **Signal Conditioning:** Causal 4th-order Butterworth bandpass filter (1.0 – 30.0 Hz) applied prior to inference.
-* **Arithmetic Precision:** **INT16 / DFP16** (16-bit Dynamic Fixed-Point, symmetric power-of-two scaling).
+* **Arithmetic Precision:** **INT8 / DFP8** (8-bit Dynamic Fixed-Point, symmetric power-of-two scaling).
 * **Clinical Performance:**
   * **Event-Level Sensitivity:** **94.89%** (Macro) / **95.67%** (Micro).
   * **False Alarm Rate (FAR):** **0.2937 / hour** (~1 false alarm every 3.4 hours).
   * **Mean Detection Delay:** **17.75 seconds**.
 * **Hardware Sizing & Memory Footprint:**
-  * **Total Parameters:** **11,786 parameters (~23.0 KiB at INT16 / DFP16)**.
+  * **Total Parameters:** **11,786 parameters (~11.5 KiB at INT8 / DFP8)**.
   * **Total Computation:** **489,600 MACs** per inference window.
-  * **Total On-Chip SRAM:** **36.3 KiB** (23.0 KiB INT16 weights + 13.3 KiB line buffers and feature maps).
-  * **External Memory Access:** **Zero DRAM access** during active inference (100% on-chip BRAM). Occupies only **~5.6%** of Kria KV260 on-chip Block RAM (640 KiB available).
+  * **Total On-Chip SRAM:** **18.2 KiB** (11.5 KiB INT8 weights + 6.7 KiB line buffers).
+  * **External Memory Access:** **Zero DRAM access** during active inference (100% on-chip BRAM). Occupies only **~2.8%** of Kria KV260 on-chip Block RAM (640 KiB available).
 
 ---
 
@@ -36,24 +36,24 @@ The deployed network adopts an **AI-Hardware Co-Design** approach:
 
 ### Layer-by-Layer Detailed Breakdown (`wearseizure1d_k5only`)
 
-| Layer Name | Layer Type | Input Shape ($C_{in} \times L_{in}$) | Kernel ($k$) | Stride ($s$) | Dilation ($dil$) | Padding ($pad$) | Output Shape ($C_{out} \times L_{out}$) | Line Buffer | MACs (HW) | INT16 Weights |
+| Layer Name | Layer Type | Input Shape ($C_{in} \times L_{in}$) | Kernel ($k$) | Stride ($s$) | Dilation ($dil$) | Padding ($pad$) | Output Shape ($C_{out} \times L_{out}$) | Line Buffer | MACs (HW) | INT8 Weights |
 | :--- | :--- | :---:| :---:| :---:| :---:| :---:| :---:| :---:| :---:| :---:|
-| **`stem.0`** | Standard Conv1D | $1 \times 1024$ | **7** | 2 | 1 | 3 | $8 \times 512$ | 14 B | 28,672 | 112 B |
-| **`b1.dw`** | Depthwise Conv1D | $8 \times 512$ | **5** | 2 | 1 | 2 | $8 \times 256$ | 80 B | 10,240 | 80 B |
-| **`b1.pw`** | Pointwise Conv1D (1×1) | $8 \times 256$ | **1** | 1 | 1 | 0 | $16 \times 256$ | 16 B | 32,768 | 256 B |
-| **`b2.dw`** | Depthwise Conv1D | $16 \times 256$ | **5** | 2 | 1 | 2 | $16 \times 128$ | 160 B | 10,240 | 160 B |
-| **`b2.pw`** | Pointwise Conv1D (1×1) | $16 \times 128$ | **1** | 1 | 1 | 0 | $24 \times 128$ | 32 B | 49,152 | 768 B |
-| **`b3.dw`** | Depthwise Conv1D | $24 \times 128$ | **5** | 2 | **2** | 4 | $24 \times 64$ | 432 B | 7,680 | 240 B |
-| **`b3.pw`** | Pointwise Conv1D (1×1) | $24 \times 64$ | **1** | 1 | 1 | 0 | $32 \times 64$ | 48 B | 49,152 | 1,536 B |
-| **`b4.dw`** | Depthwise Conv1D | $32 \times 64$ | **5** | 2 | **4** | 8 | $32 \times 32$ | 1,088 B | 5,120 | 320 B |
-| **`b4.pw`** | Pointwise Conv1D (1×1) | $32 \times 32$ | **1** | 1 | 1 | 0 | $48 \times 32$ | 64 B | 49,152 | 3,072 B |
-| **`context.0.dw`** | Depthwise Conv1D | $48 \times 32$ | **5** | 1 | **8** | 16 | $48 \times 32$ | 3,168 B | 7,680 | 480 B |
-| **`context.0.pw`** | Pointwise Conv1D (1×1) | $48 \times 32$ | **1** | 1 | 1 | 0 | $64 \times 32$ | 96 B | 98,304 | 6,144 B |
-| **`context.1.dw`** | Depthwise Conv1D | $64 \times 32$ | **5** | 1 | **16** | 32 | $64 \times 32$ | 8,320 B | 10,240 | 640 B |
-| **`context.1.pw`** | Pointwise Conv1D (1×1) | $64 \times 32$ | **1** | 1 | 1 | 0 | $64 \times 32$ | 128 B | 131,072 | 8,192 B |
+| **`stem.0`** | Standard Conv1D | $1 \times 1024$ | **7** | 2 | 1 | 3 | $8 \times 512$ | 7 B | 28,672 | 56 B |
+| **`b1.dw`** | Depthwise Conv1D | $8 \times 512$ | **5** | 2 | 1 | 2 | $8 \times 256$ | 40 B | 10,240 | 40 B |
+| **`b1.pw`** | Pointwise Conv1D (1×1) | $8 \times 256$ | **1** | 1 | 1 | 0 | $16 \times 256$ | 8 B | 32,768 | 128 B |
+| **`b2.dw`** | Depthwise Conv1D | $16 \times 256$ | **5** | 2 | 1 | 2 | $16 \times 128$ | 80 B | 10,240 | 80 B |
+| **`b2.pw`** | Pointwise Conv1D (1×1) | $16 \times 128$ | **1** | 1 | 1 | 0 | $24 \times 128$ | 16 B | 49,152 | 384 B |
+| **`b3.dw`** | Depthwise Conv1D | $24 \times 128$ | **5** | 2 | **2** | 4 | $24 \times 64$ | 216 B | 7,680 | 120 B |
+| **`b3.pw`** | Pointwise Conv1D (1×1) | $24 \times 64$ | **1** | 1 | 1 | 0 | $32 \times 64$ | 24 B | 49,152 | 768 B |
+| **`b4.dw`** | Depthwise Conv1D | $32 \times 64$ | **5** | 2 | **4** | 8 | $32 \times 32$ | 544 B | 5,120 | 160 B |
+| **`b4.pw`** | Pointwise Conv1D (1×1) | $32 \times 32$ | **1** | 1 | 1 | 0 | $48 \times 32$ | 32 B | 49,152 | 1,536 B |
+| **`context.0.dw`** | Depthwise Conv1D | $48 \times 32$ | **5** | 1 | **8** | 16 | $48 \times 32$ | 1,584 B | 7,680 | 240 B |
+| **`context.0.pw`** | Pointwise Conv1D (1×1) | $48 \times 32$ | **1** | 1 | 1 | 0 | $64 \times 32$ | 48 B | 98,304 | 3,072 B |
+| **`context.1.dw`** | Depthwise Conv1D | $64 \times 32$ | **5** | 1 | **16** | 32 | $64 \times 32$ | 4,160 B | 10,240 | 320 B |
+| **`context.1.pw`** | Pointwise Conv1D (1×1) | $64 \times 32$ | **1** | 1 | 1 | 0 | $64 \times 32$ | 64 B | 131,072 | 4,096 B |
 | **`GAP`** | Global Average Pooling | $64 \times 32$ | — | — | — | — | $64 \times 1$ | — | 64 | 0 B |
-| **`FC`** | Linear Classifier | $64 \times 1$ | **1** | — | — | — | $2 \times 1$ (Logits) | — | 128 | 256 B |
-| **Total** | | | | | | | | **~13.3 KiB** | **489,600** | **~23.0 KiB** |
+| **`FC`** | Linear Classifier | $64 \times 1$ | **1** | — | — | — | $2 \times 1$ (Logits) | — | 128 | 128 B |
+| **Total** | | | | | | | | **~6.7 KiB** | **489,600** | **~11.5 KiB** |
 
 > **Note on MACs Counting:** Software profilers (e.g., `thop`) report **585,920 MACs** because they count separate BatchNorm and activation operations. In actual hardware, BatchNorm is folded into the Conv layer weights/biases, resulting in **489,600 hardware MACs**.
 

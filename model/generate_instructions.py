@@ -42,7 +42,7 @@ def encode_instruction(layer: dict) -> int:
     kernel = layer["kernel_size"] & 0xF
     stride = STRIDE_ENCODING.get(layer["stride"], 0)
     pad = layer["padding"] & 0xF
-    out_shift = layer.get("output_shift", 14) & 0x3F
+    out_shift = layer.get("output_shift", 7) & 0x3F
     src_fm_base = layer.get("src_fm_base", 0) & 0x3FF
     
     # Use spare bits in RESERVED [11:2] to pass upper bits of padding if pad > 15

@@ -2,7 +2,7 @@
 """export_weights.py
 
 Framework to extract weights from a trained PyTorch checkpoint (.pt / .pth),
-perform BatchNorm folding, quantize to signed 16-bit DFP16, and generate
+perform BatchNorm folding, quantize to signed 8-bit DFP8, and generate
 hex files for RTL simulation.
 
 Usage:
@@ -49,10 +49,10 @@ def fold_bn_weights(conv_w, conv_b, bn_gamma, bn_beta, bn_mean, bn_var, eps=1e-5
     return w_fused, b_fused
 
 
-def to_hex16(val: int) -> str:
-    """Formats a signed integer as a 4-character uppercase hex string (two's complement)."""
-    val_clamped = max(-32768, min(32767, int(round(val))))
-    return f"{val_clamped & 0xFFFF:04X}"
+def to_hex8(val: int) -> str:
+    """Formats a signed 8-bit integer as a 2-character uppercase hex string (two's complement)."""
+    val_clamped = max(-128, min(127, int(round(val))))
+    return f"{val_clamped & 0xFF:02X}"
 
 
 def to_hex32(val: int) -> str:
@@ -62,7 +62,7 @@ def to_hex32(val: int) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Export weights from PyTorch checkpoint to DFP16 hex files.")
+    parser = argparse.ArgumentParser(description="Export weights from PyTorch checkpoint to DFP8 hex files.")
     parser.add_argument("--checkpoint", type=str, required=False, default=None,
                         help="Path to the trained PyTorch checkpoint (.pt / .pth)")
     parser.add_argument("--output_dir", type=str, default=str(WEIGHTS_DIR),
@@ -83,7 +83,7 @@ def main():
         print("This script will automatically:")
         print("  1. Load the PyTorch checkpoint state dictionary.")
         print("  2. Fold BatchNorm layers into Conv1D weights and biases.")
-        print("  3. Quantize parameters to INT16 / DFP16 according to manifest.json.")
+        print("  3. Quantize parameters to INT8 / DFP8 according to manifest.json.")
         print(f"  4. Write individual hex files and all_weights.hex to {out_dir.name}/")
         print("=" * 70)
         return 0
@@ -132,8 +132,8 @@ def main():
             continue
 
         meta = next(l for l in manifest["layers"] if l["layer_id"] == layer_id)
-        p_w = meta.get("p_weight", 14)
-        p_in = meta.get("p_in", 13)
+        p_w = meta.get("p_weight", 7)
+        p_in = meta.get("p_in", 6)
         p_bias = p_in + p_w
 
         # Extract conv weight
@@ -151,9 +151,9 @@ def main():
             w_fused = w_tensor
             b_fused = b_tensor if b_tensor is not None else np.zeros(w_tensor.shape[0])
 
-        # Quantize weights to 16-bit DFP16
+        # Quantize weights to 8-bit DFP8
         w_scale = 2.0 ** p_w
-        w_q = np.clip(np.round(w_fused * w_scale), -32768, 32767).astype(np.int64)
+        w_q = np.clip(np.round(w_fused * w_scale), -128, 127).astype(np.int64)
 
         # Quantize biases to 32-bit (accumulator scale)
         b_scale = 2.0 ** p_bias
@@ -166,7 +166,7 @@ def main():
 
         with open(w_file, "w", encoding="utf-8") as wf:
             for val in w_q.flatten():
-                wf.write(f"{to_hex16(val)}\n")
+                wf.write(f"{to_hex8(val)}\n")
                 all_weights_flat.append(val)
 
         with open(b_file, "w", encoding="utf-8") as bf:
@@ -179,7 +179,7 @@ def main():
     master_file = out_dir / "all_weights.hex"
     with open(master_file, "w", encoding="utf-8") as mf:
         for val in all_weights_flat:
-            mf.write(f"{to_hex16(val)}\n")
+            mf.write(f"{to_hex8(val)}\n")
 
     print(f"\n[OK] Weight extraction complete! Total parameters: {len(all_weights_flat)}")
     print(f"Master file saved at: {master_file}")
