@@ -51,9 +51,10 @@ def encode_instruction(layer: dict) -> int:
     out_shift = layer.get("output_shift", 7) & 0x3F
     src_fm_base = layer.get("src_fm_base", 0) & 0x3FF
     
-    # Use spare bits in RESERVED [11:2] to pass upper bits of padding if pad > 15
+    # Sub-fields inside [11:2]
+    relu_en = 1 if layer.get("relu", False) else 0
     pad_upper = (layer["padding"] >> 4) & 0x3
-    reserved = pad_upper & 0x3FF
+    reserved_flags = 0
 
     src_sel = layer.get("src_fm_sel", 0) & 0x1
     dst_sel = layer.get("dst_fm_sel", 1) & 0x1
@@ -68,7 +69,9 @@ def encode_instruction(layer: dict) -> int:
     inst |= (pad & 0xF) << 28
     inst |= (out_shift & 0x3F) << 22
     inst |= (src_fm_base & 0x3FF) << 12
-    inst |= (reserved & 0x3FF) << 2
+    inst |= (reserved_flags & 0x7F) << 5
+    inst |= (pad_upper & 0x3) << 3
+    inst |= (relu_en & 0x1) << 2
     inst |= (src_sel & 0x1) << 1
     inst |= (dst_sel & 0x1) << 0
 
@@ -86,9 +89,11 @@ def main():
         inst_64 = encode_instruction(layer)
         inst_hex = f"{inst_64:016X}"
         instructions.append(inst_hex)
+        relu_str = "RELU" if layer.get("relu", False) else "NONE"
         print(f"  Layer {layer['layer_id']:02d} ({layer['name']:<14}): 0x{inst_hex} | "
               f"k={layer['kernel_size']} s={layer['stride']} dil={layer['dilation']} "
-              f"in={layer['in_channels']} out={layer['out_channels']} shift={layer['output_shift']}")
+              f"in={layer['in_channels']} out={layer['out_channels']} shift={layer['output_shift']} "
+              f"act={relu_str}")
 
     with open(OUTPUT_HEX_PATH, "w", encoding="utf-8") as f:
         is_stub = "STUB" in manifest.get("_quantization_status", "")

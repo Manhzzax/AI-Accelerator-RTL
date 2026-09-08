@@ -70,11 +70,11 @@ The accelerator eliminates host CPU polling by fetching micro-instructions seque
 ### Micro-Instruction Bitfield Mapping (`instruction_i [63:0]`)
 
 ```text
- 63      60 59   58 57       48 47       38 37    34 33    32 31    28 27      22 21          12 11     2 1  0
-+----------+-------+-----------+-----------+--------+--------+--------+----------+--------------+--------+----+
-| DILATION | CONV  |   IN_CH   |  OUT_CH   | KERNEL | STRIDE |  PAD   | OUT_SHIFT| SRC_FM_BASE  |RES/FLAG|S|D |
-|  [63:60] | [59:58|  [57:48]  |  [47:38]  | [37:34]| [33:32]| [31:28]| [27:22]  |   [21:12]    | [11:2] |1|0 |
-+----------+-------+-----------+-----------+--------+--------+--------+----------+--------------+--------+----+
+ 63      60 59   58 57       48 47       38 37    34 33    32 31    28 27      22 21          12 11     5 4   3 2 1 0
++----------+-------+-----------+-----------+--------+--------+--------+----------+--------------+--------+-----+---+---+
+| DILATION | CONV  |   IN_CH   |  OUT_CH   | KERNEL | STRIDE |  PAD   | OUT_SHIFT| SRC_FM_BASE  |RESERVED|P_UP |R|S|D|
+|  [63:60] | [59:58|  [57:48]  |  [47:38]  | [37:34]| [33:32]| [31:28]| [27:22]  |   [21:12]    | [11:5] |[4:3]|2|1|0|
++----------+-------+-----------+-----------+--------+--------+--------+----------+--------------+--------+-----+---+---+
 ```
 
 ### Bitfield Descriptions
@@ -87,10 +87,12 @@ The accelerator eliminates host CPU polling by fetching micro-instructions seque
 | **`[47:38]`** | 10 | `OUT_CH` | Number of output channels (Supports 1 to 1024 channels). |
 | **`[37:34]`** | 4 | `KERNEL` | Kernel size $K$ ($1 \le K \le 15$):<br>• `4'd1`: $K=1$ (Pointwise / Linear)<br>• `4'd5`: $K=5$ (Main blocks B1–B4, Context)<br>• `4'd7`: $K=7$ (Stem layer) |
 | **`[33:32]`** | 2 | `STRIDE_MODE` | Stride step size along temporal dimension:<br>• `2'b00`: Stride = 1 (No decimation)<br>• `2'b01`: Stride = 2 (Decimate temporal dimension by $2\times$) |
-| **`[31:28]`** | 4 | `PAD` | Symmetric zero-padding applied to each boundary ($0 \le P \le 15$). |
-| **`[27:22]`** | 6 | `OUTPUT_SHIFT` | Fixed-point right-shift scaling factor ($0 \le \text{shift} \le 63$) for INT16 / DFP16 requantization (power-of-two arithmetic right shift). |
+| **`[31:28]`** | 4 | `PAD` | Lower 4 bits of zero-padding applied to each boundary ($0 \le P \le 15$). |
+| **`[27:22]`** | 6 | `OUTPUT_SHIFT` | Fixed-point right-shift scaling factor ($0 \le \text{shift} \le 63$) for INT8 / DFP8 requantization (symmetric round-to-nearest arithmetic shift). |
 | **`[21:12]`** | 10 | `SRC_FM_BASE` | Base word address of input feature map within the source memory bank. |
-| **`[11:2]`** | 10 | `RESERVED` | Reserved for future acceleration flags (e.g., Activation bypass, ReLU6, MaxPool). |
+| **`[11:5]`** | 7 | `RESERVED` | Reserved for future acceleration flags (e.g., ReLU6, MaxPool). |
+| **`[4:3]`** | 2 | `PAD_UPPER` | Upper 2 bits of zero-padding when $P > 15$ ($P = \{\text{PAD\_UPPER}, \text{PAD}\}$ supports up to $P=63$). |
+| **`[2]`** | 1 | `RELU_EN` | Fused Activation control:<br>• `1'b1`: Fused ReLU enabled (`max(0, x)` after quantization).<br>• `1'b0`: Linear / Bypass (no ReLU applied). |
 | **`[1]`** | 1 | `SRC_FM_SEL` | Source buffer selection: `0`: Ping Bank, `1`: Pong Bank. |
 | **`[0]`** | 1 | `DST_FM_SEL` | Destination buffer selection: `0`: Ping Bank, `1`: Pong Bank. |
 

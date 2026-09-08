@@ -56,21 +56,14 @@ All test vectors should be formatted as 2-character uppercase hexadecimal string
 | `14_gap_out.txt` | `gap` (Global Average Pooling) | *ARM Software* | $64 \times 1$ | 64 |
 | `15_logits_output.txt` | `fc` (Classification Logits) | *ARM Software* | $2 \times 1$ | 2 |
 
-### 2.4 Quantization Metadata & Scaling (`manifest.json`)
+### 2.4 Quantization Metadata, Scaling & Microcode (`manifest.json` & `instructions.hex`)
 
-> [!IMPORTANT]
-> **Quantization Status: STUB / TEMPLATE**
-> The values currently populated in `model/manifest.json` ($p_{\text{in}}=6, p_w=7, p_{\text{out}}=6, \text{output\_shift}=7$) and the corresponding 13 micro-instructions in `model/instructions.hex` are **STUB / TEMPLATE placeholders**.
-> 
-> They were established to freeze the 64-bit microcode bitfield encoding and verify RTL instruction decode & datapath pipeline timing before trained weights are delivered.
-> 
-> The **AI Modeling Team must deliver the final Quantization Parameter Table** derived from post-training quantization (PTQ) or quantization-aware training (QAT) on the clinical EEG calibration set:
-> $$\text{output\_shift}^{(l)} = p_{\text{in}}^{(l)} + p_w^{(l)} - p_{\text{out}}^{(l)}$$
-> Once the calibrated parameters are filled into `manifest.json`, running:
-> ```bash
-> python model/generate_instructions.py
-> ```
-> will automatically recompile the production microcode into `model/instructions.hex` without requiring any RTL modifications.
+* **Quantization Status:** **CALIBRATED**. Per-layer fractional exponents ($p_{\text{in}}, p_w, p_{\text{out}}$) and `output_shift` ($5 \le \text{shift} \le 7$) are empirically measured from the trained model checkpoint (`chb01__chb01_03`, L1+L8 fold) and validation activations.
+* **Microcode Encoding:** The 64-bit microcode in `model/instructions.hex` contains **exactly 13 instructions** compiled via `model/generate_instructions.py`:
+  * **Bit `[2]` (`RELU_EN`):** Fused Activation control (`1` for layers with fused ReLU, `0` for linear/bypass layers).
+  * **Bits `[4:3]` (`PAD_UPPER`):** Upper 2 bits of padding for $P > 15$ (e.g. $P=16$ for `context.0.dw`, $P=32$ for `context.1.dw`).
+  * **Bits `[11:5]` (`RESERVED`):** 7 reserved flag bits for future acceleration features.
+  * **Bits `[27:22]` (`OUTPUT_SHIFT`):** 6-bit per-layer arithmetic right-shift amount matching `Fixed_Point_Quantizer.v`.
 
 ---
 
